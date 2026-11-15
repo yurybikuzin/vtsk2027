@@ -1,0 +1,42 @@
+[[series]]
+series_id = "infl_exp_y1"
+path = "downloaded/CBR_Deposits_Sources_Registry_2026-11-07/CBR19_Infl_exp_26-10.xlsx"
+sheet = "Данные за все годы"
+section = "Прямые оценки годовой инфляции: медианные значения"
+row_label = "ожидаемая инфляция (в %)"
+unit = "%"
+period_style = "month"
+min_period = "2010-04"
+max_period = "2026-10"
+
+[[series]]
+series_id = "infl_obs_y1"
+path = "downloaded/CBR_Deposits_Sources_Registry_2026-11-07/CBR19_Infl_exp_26-10.xlsx"
+sheet = "Данные за все годы"
+section = "Прямые оценки годовой инфляции: медианные значения"
+row_label = "наблюдаемая инфляция (в %)"
+unit = "%"
+period_style = "month"
+min_period = "2010-04"
+max_period = "2026-10"
+
+[[series]]
+series_id = "infl_exp_y5"
+path = "downloaded/CBR_Deposits_Sources_Registry_2026-11-07/CBR19_Infl_exp_26-10.xlsx"
+sheet = "Данные за все годы"
+section = "Прямые оценки пятилетней инфляции: медианные значения"
+row_label = "ожидаемая инфляция (в %)"
+unit = "%"
+period_style = "month"
+min_period = "2010-04"
+max_period = "2026-10"
+
+[[series]]
+series_id = "rD"
+path = "downloaded/CBR_Deposits_Sources_Registry_2026-11-07/CBR05_deposits.xlsx"
+sheet = "ставки_руб"
+period_style = "date_row_column"
+column = "G"
+unit = "%"
+min_period = "2018-01"
+max_period = "2026-06"

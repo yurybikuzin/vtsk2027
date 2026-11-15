@@ -1,0 +1,15 @@
+[package]
+name = "cbr-fetch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cbr-fetch"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+csv.workspace = true
+reqwest.workspace = true
+serde.workspace = true

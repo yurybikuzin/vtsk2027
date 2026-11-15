@@ -1,0 +1,27 @@
+[package]
+name = "cbr-panel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "cbr_panel"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cbr-panel"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+calamine = {workspace =  true, features = ["chrono"] }
+chrono.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+regex.workspace = true
+rust_xlsxwriter.workspace = true
+serde.workspace = true
+toml.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
