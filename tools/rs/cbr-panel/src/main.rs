@@ -185,6 +185,24 @@ enum Cmd {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Выгрузить панель в CSV с лагами и сезонными дамми
+    ExportCsv {
+        #[arg(long)]
+        panel: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        columns: Option<String>,
+    },
+    /// OLS с Newey-West HAC через greeners
+    Regress {
+        #[arg(long)]
+        csv: PathBuf,
+        #[arg(long)]
+        formula: String,
+        #[arg(long, default_value_t = 3)]
+        lags: usize,
+    },
 }
 
 fn parse_kv(s: &str) -> Result<(String, String), String> {
@@ -374,6 +392,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             cbr_panel::enrich::run(cbr_panel::enrich::Args {
                 panel: &panel,
                 out: &out,
+            })?;
+        }
+        Cmd::ExportCsv {
+            panel,
+            out,
+            columns,
+        } => {
+            cbr_panel::export_csv::run(cbr_panel::export_csv::Args {
+                panel: &panel,
+                out: &out,
+                columns: columns.as_deref(),
+            })?;
+        }
+        Cmd::Regress { csv, formula, lags } => {
+            cbr_panel::regress::run(cbr_panel::regress::Args {
+                csv: &csv,
+                formula: &formula,
+                lags,
             })?;
         }
     }

@@ -1,8 +1,12 @@
 tree.*.txt
-rs-bundle.txt
+bundle.txt
 team.md
 todo.md
 DeepSeek.md
 rsync*.sh
+hyp.md
 /data
 Makefile.md
+~*
+.~*
+

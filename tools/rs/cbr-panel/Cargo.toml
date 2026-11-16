@@ -3,6 +3,7 @@ name = "cbr-panel"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+build = "build.rs"
 
 [lib]
 name = "cbr_panel"
@@ -25,3 +26,8 @@ serde.workspace = true
 toml.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
+
+# greeners = "1.4"
+greeners = "2.0.1"
+ndarray = "0.17"
+ndarray-linalg = { version = "0.18", features = ["openblas-system"] }

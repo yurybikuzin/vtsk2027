@@ -43,8 +43,18 @@ fn is_outlier(q: &str) -> f64 {
 pub fn run(args: Args) -> Result<()> {
     let panel = read_panel(args.panel)
         .map_err(|e| anyhow::anyhow!("read_panel {}: {}", args.panel.display(), e))?;
+
     let mut columns = panel.columns.clone();
-    for c in ["s", "m", "d_usd", "outlier"] {
+    for c in [
+        "s",
+        "m",
+        "d_usd",
+        "outlier",
+        "f_D_shift",
+        "g_E_D",
+        "g_B_E",
+        "g_F_E",
+    ] {
         if !columns.iter().any(|x| x == c) {
             columns.push(c.to_string());
         }
@@ -53,11 +63,24 @@ pub fn run(args: Args) -> Result<()> {
     let mut data: BTreeMap<String, BTreeMap<String, f64>> = BTreeMap::new();
     for (q, row) in &panel.data {
         let mut r = row.clone();
+
         if let (Some(y1), Some(rd)) = (row.get("y1"), row.get("rD")) {
             r.insert("s".to_string(), y1 - rd);
         }
         if let (Some(rd), Some(k)) = (row.get("rD"), row.get("k")) {
             r.insert("m".to_string(), rd - k);
+        }
+        if let (Some(oth_rub), Some(tr)) = (row.get("f_D_oth_rub"), row.get("f_D_tr")) {
+            r.insert("f_D_shift".to_string(), oth_rub - tr);
+        }
+        if let (Some(e), Some(d)) = (row.get("f_E"), row.get("f_D_oth_rub")) {
+            r.insert("g_E_D".to_string(), e - d);
+        }
+        if let (Some(b), Some(e)) = (row.get("f_B"), row.get("f_E")) {
+            r.insert("g_B_E".to_string(), b - e);
+        }
+        if let (Some(f), Some(e)) = (row.get("f_F"), row.get("f_E")) {
+            r.insert("g_F_E".to_string(), f - e);
         }
         if let (Some(usd_t), Some(prev)) = (row.get("usd"), prev_quarter(q)) {
             if let Some(usd_prev) = panel.data.get(&prev).and_then(|m| m.get("usd")) {
@@ -67,6 +90,7 @@ pub fn run(args: Args) -> Result<()> {
             }
         }
         r.insert("outlier".to_string(), is_outlier(q));
+
         data.insert(q.clone(), r);
     }
 
