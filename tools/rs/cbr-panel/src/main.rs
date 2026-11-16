@@ -1,9 +1,11 @@
 use calamine::open_workbook_auto;
 use calamine::Reader;
 use cbr_panel::check::{coverage, print_coverage};
+use cbr_panel::excel::read_long_xlsx;
 use cbr_panel::extract::{extract_rows, ExtractSpec};
 use cbr_panel::extract_config;
 use cbr_panel::panel::{build, Inputs};
+use cbr_panel::quarterly;
 use cbr_panel::quarterly::monthly_to_quarterly;
 use clap::{Parser, Subcommand};
 use rust_xlsxwriter::{Color, Format, FormatAlign, Workbook};
@@ -59,12 +61,16 @@ enum Cmd {
         r#in: PathBuf,
         #[arg(long)]
         out: PathBuf,
+        #[arg(long)]
+        append: bool,
+        #[arg(long)]
+        fresh: bool,
     },
     /// Приклеить квартальные ряды к панели по period (с бэкапом перед перезаписью)
     Merge {
         #[arg(long)]
         panel: PathBuf,
-        #[arg(long, value_delimiter = ',')]
+        #[arg(long = "in", alias = "rows", value_delimiter = ',')]
         rows: Vec<PathBuf>,
         #[arg(long)]
         out: PathBuf,
@@ -193,6 +199,8 @@ enum Cmd {
         out: PathBuf,
         #[arg(long)]
         columns: Option<String>,
+        #[arg(long)]
+        drop_outliers: bool,
     },
     /// OLS с Newey-West HAC через greeners
     Regress {
@@ -260,11 +268,23 @@ fn main() -> Result<(), Box<dyn Error>> {
             let n = cbr_panel::excel::write_long_xlsx(&out, &long)?;
             eprintln!("rows written: {} -> {}", n, out.display());
         }
-        Cmd::Quarterly { r#in, out } => {
-            let rows = cbr_panel::excel::read_long_xlsx(&r#in)?;
+        Cmd::Quarterly {
+            r#in,
+            out,
+            append,
+            fresh,
+        } => {
+            if fresh && out.exists() {
+                std::fs::remove_file(&out).ok();
+            }
+            let rows = read_long_xlsx(&r#in)?;
             let q = monthly_to_quarterly(&rows);
-            let n = cbr_panel::excel::write_quarterly_xlsx(&out, &q)?;
-            eprintln!("quarters written: {} -> {}", n, out.display());
+            let n = if append {
+                quarterly::append_quarterly(&out, &q)?
+            } else {
+                quarterly::write_quarterly(&out, &q)?
+            };
+            eprintln!("quarterly: {} rows -> {}", n, out.display());
         }
         Cmd::Merge {
             panel,
@@ -398,11 +418,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             panel,
             out,
             columns,
+            drop_outliers,
         } => {
             cbr_panel::export_csv::run(cbr_panel::export_csv::Args {
                 panel: &panel,
                 out: &out,
                 columns: columns.as_deref(),
+                drop_outliers,
             })?;
         }
         Cmd::Regress { csv, formula, lags } => {

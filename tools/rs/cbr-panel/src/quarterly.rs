@@ -101,3 +101,21 @@ pub fn write_quarterly<P: AsRef<Path>>(
 ) -> Result<usize, Box<dyn Error>> {
     write_quarterly_xlsx(path, q)
 }
+
+pub fn append_quarterly<P: AsRef<Path>>(
+    path: P,
+    q: &BTreeMap<(String, String), (f64, Option<String>)>,
+) -> Result<usize, Box<dyn Error>> {
+    let path = path.as_ref();
+    let mut merged: BTreeMap<(String, String), (f64, Option<String>)> = BTreeMap::new();
+    if path.exists() {
+        let existing = crate::excel::read_quarterly_xlsx(path)?;
+        for (k, v) in existing {
+            merged.insert(k, (v, None));
+        }
+    }
+    for (k, v) in q {
+        merged.insert(k.clone(), v.clone());
+    }
+    crate::excel::write_quarterly_xlsx(path, &merged)
+}

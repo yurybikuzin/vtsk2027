@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::walker;
@@ -31,7 +30,7 @@ fn lang_for(name: &str) -> Option<&'static str> {
     }
 }
 
-pub fn run(dir: &Path, out_path: &Path) -> Result<()> {
+pub fn run(dir: &Path, out_path: &Path, max_bytes: usize) -> Result<()> {
     let root = dir.canonicalize().context("canonicalize dir")?;
     let walker = walker::build(&root)?;
 
@@ -60,47 +59,90 @@ pub fn run(dir: &Path, out_path: &Path) -> Result<()> {
         );
     }
 
-    let mut out =
-        fs::File::create(out_path).with_context(|| format!("create {}", out_path.display()))?;
+    let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-    let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-    writeln!(out, "# Rust, shell, config and build bundle")?;
-    writeln!(out, "# root: {}", root.display())?;
-    writeln!(out, "# files: {}", files.len())?;
-    writeln!(out, "# generated: {}", ts)?;
-    writeln!(out)?;
+    let dir_out = out_path.parent().unwrap_or_else(|| Path::new("."));
+    let stem = out_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("bundle");
+    let ext = out_path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("txt");
 
-    writeln!(out, "## File index")?;
-    for f in &files {
-        let rel = f.strip_prefix(&root).unwrap_or(f);
-        writeln!(out, "- {}", rel.display())?;
-    }
-    writeln!(out)?;
+    let mut part: usize = 0;
+    let mut buf = String::new();
+    let mut written: Vec<PathBuf> = Vec::new();
+
+    let flush = |buf: &mut String,
+                 part: usize,
+                 files_in_part: &[PathBuf],
+                 written: &mut Vec<PathBuf>|
+     -> Result<()> {
+        let name = format!("{}.{:03}.{}", stem, part, ext);
+        let path = dir_out.join(name);
+        let mut body = header(&root, part, files_in_part.len(), &ts);
+        body.push_str(buf);
+        fs::write(&path, body.as_bytes()).with_context(|| format!("write {}", path.display()))?;
+        written.push(path);
+        buf.clear();
+        Ok(())
+    };
+
+    let mut current: Vec<PathBuf> = Vec::new();
 
     for f in &files {
         let rel = f.strip_prefix(&root).unwrap_or(f);
         let name = f.file_name().and_then(|s| s.to_str()).unwrap_or("");
-        writeln!(out, "## {}", rel.display())?;
+        let mut piece = String::new();
+        piece.push_str(&format!("## {}\n", rel.display()));
         if let Some(lang) = lang_for(name) {
-            writeln!(out, "```{}", lang)?;
+            piece.push_str(&format!("```{}\n", lang));
         } else {
-            writeln!(out, "```")?;
+            piece.push_str("```\n");
         }
         let content = fs::read_to_string(f).with_context(|| format!("read {}", f.display()))?;
-        out.write_all(content.as_bytes())?;
+        piece.push_str(&content);
         if !content.ends_with('\n') {
-            writeln!(out)?;
+            piece.push('\n');
         }
-        writeln!(out, "```")?;
-        writeln!(out)?;
+        piece.push_str("```\n\n");
+
+        if !current.is_empty() && buf.len() + piece.len() > max_bytes {
+            flush(&mut buf, part, &current, &mut written)?;
+            part += 1;
+            current.clear();
+        }
+
+        buf.push_str(&piece);
+        current.push(f.clone());
+    }
+
+    if !current.is_empty() {
+        flush(&mut buf, part, &current, &mut written)?;
     }
 
     eprintln!(
-        "Wrote {} files to {} ({} bytes)",
+        "Wrote {} files in {} bundle part(s) to {}",
         files.len(),
-        out_path.display(),
-        fs::metadata(out_path).map(|m| m.len()).unwrap_or(0)
+        written.len(),
+        dir_out.display()
     );
+    for w in &written {
+        let size = fs::metadata(w).map(|m| m.len()).unwrap_or(0);
+        eprintln!("  {} ({} bytes)", w.display(), size);
+    }
 
     Ok(())
+}
+
+fn header(root: &Path, part: usize, count: usize, ts: &str) -> String {
+    format!(
+        "# Rust, shell, config and build bundle\n# root: {}\n# part: {}\n# files: {}\n# generated: {}\n\n",
+        root.display(),
+        part,
+        count,
+        ts
+    )
 }

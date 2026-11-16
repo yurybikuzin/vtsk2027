@@ -24,8 +24,10 @@ enum Commands {
         /// Directory to walk
         dir: PathBuf,
         /// Output bundle file
-        #[arg(default_value = "rs-bundle.txt")]
+        #[arg(default_value = "bundle.000.txt")]
         out: PathBuf,
+        #[arg(long, default_value_t = 51200)]
+        max_bytes: usize,
     },
 }
 
@@ -33,6 +35,10 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Tree { dir } => tree::run(&dir),
-        Commands::Bundle { dir, out } => bundle::run(&dir, &out),
+        Commands::Bundle {
+            dir,
+            out,
+            max_bytes,
+        } => bundle::run(&dir, &out, max_bytes),
     }
 }

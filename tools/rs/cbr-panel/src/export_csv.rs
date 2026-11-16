@@ -10,6 +10,7 @@ pub struct Args<'a> {
     pub panel: &'a Path,
     pub out: &'a Path,
     pub columns: Option<&'a str>,
+    pub drop_outliers: bool,
 }
 
 fn quarter_key(q: &str) -> (i32, i32) {
@@ -121,6 +122,13 @@ pub fn run(args: Args) -> Result<()> {
     writeln!(f)?;
 
     for (q, row) in &data {
+        if args.drop_outliers {
+            if let Some(v) = row.get("outlier") {
+                if *v == 1.0 {
+                    continue;
+                }
+            }
+        }
         write!(f, "{}", q)?;
         for c in &columns {
             match row.get(c) {

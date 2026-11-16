@@ -93,7 +93,8 @@ endif
         regress-all regress-h1-total regress-h1-rub regress-h4-tr regress-shift \
         regress-h2 regress-h2-ext regress-h3 regress-h3-ext regress-h5 \
         regress-ed regress-be regress-fe \
-        tree bundle tree-clean clean build
+        tree bundle tree-clean clean build \
+		regress-h1-total-ext regress-h1-rub-ext regress-h4-tr-ext regress-shift-ext regress-h1-rub-noout regress-h4-tr-noout regress-shift-noout
 
 all: cbr rosstat panel
 
@@ -158,7 +159,7 @@ usd: $(CBR_PANEL)
 	fi
 
 quarterly-all: k y1 moex usd
-	$(CBR_PANEL) quarterly --in $(K_LONG) --out $(QUARTERLY) --append
+	$(CBR_PANEL) quarterly --in $(K_LONG) --out $(QUARTERLY) --append --fresh
 	$(CBR_PANEL) quarterly --in $(Y1_LONG) --out $(QUARTERLY) --append
 	$(CBR_PANEL) quarterly --in $(MOEX_LONG) --out $(QUARTERLY) --append
 	$(CBR_PANEL) quarterly --in $(USD_LONG) --out $(QUARTERLY) --append
@@ -182,7 +183,7 @@ export-csv: enrich
 
 regress-all: regress-h1-total regress-h1-rub regress-h4-tr regress-shift \
              regress-h2 regress-h2-ext regress-h3 regress-h3-ext regress-h5 \
-             regress-ed regress-be regress-fe
+             regress-ed regress-be regress-fe regress-h1-total-ext regress-h1-rub-ext regress-h4-tr-ext regress-shift-ext regress-h1-rub-noout regress-h4-tr-noout
 
 regress-h1-total:
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
@@ -204,7 +205,7 @@ regress-h1-rub:
 		--formula "f_D_oth_rub ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-h4-tr:
+regress-h4-tr: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_D_TR) \
@@ -234,7 +235,7 @@ regress-h2:
 		--formula "f_E ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-h2-ext:
+regress-h2-ext: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_E2) \
@@ -254,7 +255,7 @@ regress-h3:
 		--formula "f_F ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-h3-ext:
+regress-h3-ext: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_F2) \
@@ -264,7 +265,7 @@ regress-h3-ext:
 		--formula "f_F ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + m_lag + d_usd_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-h5:
+regress-h5: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_B) \
@@ -274,7 +275,7 @@ regress-h5:
 		--formula "f_B ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-ed:
+regress-ed: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_ED) \
@@ -284,7 +285,7 @@ regress-ed:
 		--formula "g_E_D ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-be:
+regress-be: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_BE) \
@@ -294,7 +295,7 @@ regress-be:
 		--formula "g_B_E ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
 		--lags $(REGRESS_LAGS)
 
-regress-fe:
+regress-fe: enrich
 	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
 		--panel $(PANEL) \
 		--out $(REG_FE) \
@@ -313,12 +314,102 @@ tree: $(COLLECT)
 	$(COLLECT) tree $(ROOT) > tree.tools.txt
 	$(COLLECT) tree $(ROOT)/data > tree.data.txt
 
+BUNDLE_MAX_BYTES := 51200
+
 bundle: $(COLLECT)
-	$(COLLECT) bundle $(ROOT) bundle.txt
+	rm -f bundle.txt bundle.[0-9][0-9][0-9].txt
+	$(COLLECT) bundle $(ROOT) bundle.txt --max-bytes $(BUNDLE_MAX_BYTES)
 
 tree-clean:
 	rm -f tree.data.txt tree.tools.txt
 
 clean: tree-clean
-	rm -f bundle.txt
+	rm -f bundle.txt bundle.[0-9][0-9][0-9].txt
 	rm -f $(PANEL_CSV)
+
+REG_D_TOTAL_EXT  := $(CONSTRUCTED)/cbr_panel_reg_d_total_ext.csv
+REG_D_RUB_EXT    := $(CONSTRUCTED)/cbr_panel_reg_d_rub_ext.csv
+REG_D_TR_EXT     := $(CONSTRUCTED)/cbr_panel_reg_d_tr_ext.csv
+REG_SHIFT_EXT    := $(CONSTRUCTED)/cbr_panel_reg_shift_ext.csv
+REG_D_RUB_NOOUT  := $(CONSTRUCTED)/cbr_panel_reg_d_rub_noout.csv
+REG_D_TR_NOOUT   := $(CONSTRUCTED)/cbr_panel_reg_d_tr_noout.csv
+REG_SHIFT_NOOUT  := $(CONSTRUCTED)/cbr_panel_reg_shift_noout.csv
+
+regress-h1-total-ext:
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_D_TOTAL_EXT) \
+		--columns "f_D_oth_total,s_lag,y1_lag,q_DIV_lag,Vol_lag,m_lag,d_usd_lag,outlier,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_D_TOTAL_EXT) \
+		--formula "f_D_oth_total ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + m_lag + d_usd_lag + outlier + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+regress-h1-rub-ext: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_D_RUB_EXT) \
+		--columns "f_D_oth_rub,s_lag,y1_lag,q_DIV_lag,Vol_lag,m_lag,d_usd_lag,outlier,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_D_RUB_EXT) \
+		--formula "f_D_oth_rub ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + m_lag + d_usd_lag + outlier + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+regress-h4-tr-ext: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_D_TR_EXT) \
+		--columns "f_D_tr,s_lag,y1_lag,q_DIV_lag,Vol_lag,m_lag,d_usd_lag,outlier,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_D_TR_EXT) \
+		--formula "f_D_tr ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + m_lag + d_usd_lag + outlier + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+regress-shift-ext: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_SHIFT_EXT) \
+		--columns "f_D_shift,s_lag,y1_lag,q_DIV_lag,Vol_lag,m_lag,d_usd_lag,outlier,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_SHIFT_EXT) \
+		--formula "f_D_shift ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + m_lag + d_usd_lag + outlier + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+REG_D_RUB_NOOUT := $(CONSTRUCTED)/cbr_panel_reg_d_rub_noout.csv
+REG_D_TR_NOOUT  := $(CONSTRUCTED)/cbr_panel_reg_d_tr_noout.csv
+
+regress-h1-rub-noout: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_D_RUB_NOOUT) \
+		--drop-outliers \
+		--columns "f_D_oth_rub,s_lag,y1_lag,q_DIV_lag,Vol_lag,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_D_RUB_NOOUT) \
+		--formula "f_D_oth_rub ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+regress-h4-tr-noout: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_D_TR_NOOUT) \
+		--drop-outliers \
+		--columns "f_D_tr,s_lag,y1_lag,q_DIV_lag,Vol_lag,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_D_TR_NOOUT) \
+		--formula "f_D_tr ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+regress-shift-noout: enrich
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- export-csv \
+		--panel $(PANEL) \
+		--out $(REG_SHIFT_NOOUT) \
+		--drop-outliers \
+		--columns "f_D_shift,s_lag,y1_lag,q_DIV_lag,Vol_lag,Q2,Q3,Q4"
+	$(CARGO) run --manifest-path $(MANIFEST) -p cbr-panel -- regress \
+		--csv $(REG_SHIFT_NOOUT) \
+		--formula "f_D_shift ~ s_lag + y1_lag + q_DIV_lag + Vol_lag + Q2 + Q3 + Q4" \
+		--lags $(REGRESS_LAGS)
+
+$(CBR_PANEL): $(wildcard $(RS)/cbr-panel/src/*.rs) $(RS)/cbr-panel/Cargo.toml
+	cd $(RS) && $(CARGO) build --release -p cbr-panel

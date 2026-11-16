@@ -6,6 +6,7 @@ DeepSeek.md
 rsync*.sh
 hyp.md
 /data
+bundle.*.txt
 Makefile.md
 ~*
 .~*
